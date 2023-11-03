@@ -57,7 +57,7 @@ await new Promise((resolve, reject) => {
 })
 
 console.log('helia2 dialling helia1...', helia1.libp2p.getMultiaddrs())
-const a1 = multiaddr(`${relay}/p2p-circuit/p2p/${helia1.libp2p.peerId.toString()}`)
+const a1 = multiaddr(`${relay}/p2p-circuit/webrtc/p2p/${helia1.libp2p.peerId.toString()}`)
 
 await helia2.libp2p.dial(a1)
 
