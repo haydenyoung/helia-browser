@@ -50,6 +50,12 @@ await helia1.libp2p.dial(multiaddr(relay))
 
 console.log('relay dialled')
 
+await new Promise((resolve, reject) => {
+  setTimeout(() => {
+    resolve()
+  }, 1000)
+})
+
 console.log('helia2 dialling helia1...', helia1.libp2p.getMultiaddrs())
 const a1 = multiaddr(`${relay}/p2p-circuit/p2p/${helia1.libp2p.peerId.toString()}`)
 
