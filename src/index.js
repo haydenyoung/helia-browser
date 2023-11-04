@@ -1,5 +1,4 @@
 import { initHelia } from './helia.js'
-import { Buffer } from 'buffer'
 import * as Block from 'multiformats/block'
 import * as dagCbor from '@ipld/dag-cbor'
 import { sha256 } from 'multiformats/hashes/sha2'
@@ -7,6 +6,8 @@ import { fromString as uint8ArrayFromString } from 'uint8arrays/from-string'
 import { toString as uint8ArrayToString } from 'uint8arrays/to-string'
 import { multiaddr } from "@multiformats/multiaddr"
 import { WebRTC } from '@multiformats/multiaddr-matcher'
+import pRetry from 'p-retry'
+import delay from 'delay'
 
 const topic = 'test'
 
@@ -27,7 +28,7 @@ helia1.libp2p.addEventListener('peer:disconnect', event => {
 })
 
 helia2.libp2p.addEventListener('peer:disconnect', (event) => {
-  console.log(helia2.libp2p.peerId.toString(), '(helia2)', 'disconnected from', event.detail.toString())    
+  console.log(helia2.libp2p.peerId.toString(), '(helia2)', 'disconnected from', event.detail.toString())
 })
 
 helia1.libp2p.services.pubsub.addEventListener("message", evt => {
@@ -43,21 +44,28 @@ await helia2.libp2p.services.pubsub.subscribe(topic)
 
 console.log('dialling relay')
 
-// replace this with any address configured for circuit relay.
-const relay = '/ip4/127.0.0.1/tcp/12345/ws/p2p/12D3KooWAJjbRkp8FPF5MKgMU53aUTxWkqvDrs4zc1VMbwRwfsbE'
+// this is the same address as specified in `./relay.js` - n.b. in production
+// you would want to append the peer id. we omit it here because it changes
+// every time we run the relay script
+const relay = '/ip4/127.0.0.1/tcp/12312/ws'
 
 await helia1.libp2p.dial(multiaddr(relay))
 
 console.log('relay dialled')
 
-await new Promise((resolve, reject) => {
-  setTimeout(() => {
-    resolve()
-  }, 1000)
+// wait until helia1 has a reservation on the relay and is listening on WebRTC
+const a1 = await pRetry(async () => {
+  const addr = helia1.libp2p.getMultiaddrs().filter(ma => WebRTC.matches(ma)).pop()
+
+  if (addr == null) {
+    await delay(10)
+    throw new Error('No WebRTC address found')
+  }
+
+  return addr
 })
 
-console.log('helia2 dialling helia1...', helia1.libp2p.getMultiaddrs())
-const a1 = multiaddr(`${relay}/p2p-circuit/webrtc/p2p/${helia1.libp2p.peerId.toString()}`)
+console.log('helia2 dialling helia1...', a1)
 
 await helia2.libp2p.dial(a1)
 
